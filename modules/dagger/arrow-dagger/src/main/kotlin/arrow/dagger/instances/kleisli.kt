@@ -7,7 +7,11 @@ import arrow.instances.KleisliBracketInstance
 import arrow.instances.KleisliFunctorInstance
 import arrow.instances.KleisliMonadErrorInstance
 import arrow.instances.KleisliMonadInstance
-import arrow.typeclasses.*
+import arrow.typeclasses.Applicative
+import arrow.typeclasses.ApplicativeError
+import arrow.typeclasses.Functor
+import arrow.typeclasses.Monad
+import arrow.typeclasses.MonadError
 import dagger.Module
 import dagger.Provides
 import javax.inject.Inject
@@ -50,7 +54,6 @@ class DaggerKleisliMonadErrorInstance<F, L> @Inject constructor(val MF: MonadErr
   override fun FF(): MonadError<F, L> = MF
 }
 
-class DaggerKleisliBracketInstance<F, D, E> @Inject constructor(val BFE: Bracket<F, E>, val KME: KleisliMonadErrorInstance<F, D, E>) : KleisliBracketInstance<F, D, E> {
-  override fun BFE(): Bracket<F, E> = BFE
-  override fun KME(): KleisliMonadErrorInstance<F, D, E> = KME
+class DaggerKleisliBracketInstance<F, D, E> @Inject constructor(val BFE: Bracket<F, E>) : KleisliBracketInstance<F, D, E> {
+  override fun FF(): Bracket<F, E> = BFE
 }

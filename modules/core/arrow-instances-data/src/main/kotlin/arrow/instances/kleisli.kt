@@ -1,12 +1,36 @@
 package arrow.instances
 
 import arrow.Kind
-import arrow.core.*
-import arrow.data.*
+import arrow.core.Either
+import arrow.core.ForId
+import arrow.core.Id
+import arrow.core.Tuple2
+import arrow.core.andThen
+import arrow.core.applicative
+import arrow.core.functor
+import arrow.core.monad
+import arrow.data.ForKleisli
+import arrow.data.Kleisli
+import arrow.data.KleisliOf
+import arrow.data.KleisliPartialOf
+import arrow.data.ReaderApi
+import arrow.data.ReaderPartialOf
+import arrow.data.applicative
+import arrow.data.fix
+import arrow.data.functor
+import arrow.data.monad
 import arrow.effects.typeclasses.Bracket
 import arrow.effects.typeclasses.ExitCase
 import arrow.instance
-import arrow.typeclasses.*
+import arrow.typeclasses.Applicative
+import arrow.typeclasses.ApplicativeError
+import arrow.typeclasses.Conested
+import arrow.typeclasses.Contravariant
+import arrow.typeclasses.Functor
+import arrow.typeclasses.Monad
+import arrow.typeclasses.MonadError
+import arrow.typeclasses.conest
+import arrow.typeclasses.counnest
 
 @instance(Kleisli::class)
 interface KleisliFunctorInstance<F, D> : Functor<KleisliPartialOf<F, D>> {
@@ -19,10 +43,10 @@ interface KleisliFunctorInstance<F, D> : Functor<KleisliPartialOf<F, D>> {
 @instance(Kleisli::class)
 interface KleisliContravariant<F, D> : Contravariant<Conested<Kind<ForKleisli, F>, D>> {
   override fun <A, B> Kind<Conested<Kind<ForKleisli, F>, D>, A>.contramap(f: (B) -> A): Kind<Conested<Kind<ForKleisli, F>, D>, B> =
-      counnest().fix().local(f).conest()
+    counnest().fix().local(f).conest()
 
   fun <A, B> KleisliOf<F, A, D>.contramapC(f: (B) -> A): KleisliOf<F, B, D> =
-      conest().contramap(f).counnest()
+    conest().contramap(f).counnest()
 }
 
 @instance(Kleisli::class)
@@ -78,33 +102,18 @@ interface KleisliApplicativeErrorInstance<F, D, E> : ApplicativeError<KleisliPar
 interface KleisliMonadErrorInstance<F, D, E> : KleisliApplicativeErrorInstance<F, D, E>, MonadError<KleisliPartialOf<F, D>, E>, KleisliMonadInstance<F, D>
 
 @instance(Kleisli::class)
-interface KleisliBracketInstance<F, R, E> : Bracket<KleisliPartialOf<F, R>, E> {
+interface KleisliBracketInstance<F, R, E> : Bracket<KleisliPartialOf<F, R>, E>, KleisliMonadErrorInstance<F, R, E> {
 
-  fun BFE(): Bracket<F, E>
-
-  fun KME(): KleisliMonadErrorInstance<F, R, E>
-
-  override fun <A> just(a: A): Kleisli<F, R, A> =
-      KME().just(a)
-
-  override fun <A> Kind<KleisliPartialOf<F, R>, A>.handleErrorWith(f: (E) -> Kind<KleisliPartialOf<F, R>, A>): Kleisli<F, R, A> =
-      KME().run {
-        this@handleErrorWith.handleErrorWith(f)
-      }
-
-  override fun <A> raiseError(e: E): Kind<KleisliPartialOf<F, R>, A> = KME().raiseError(e)
+  override fun FF(): Bracket<F, E>
 
   override fun <A, B> Kind<KleisliPartialOf<F, R>, A>.flatMap(f: (A) -> Kind<KleisliPartialOf<F, R>, B>): Kleisli<F, R, B> =
-      KME().run {
-        this@flatMap.flatMap(f)
-      }
-
-  override fun <A, B> tailRecM(a: A, f: (A) -> Kind<KleisliPartialOf<F, R>, Either<A, B>>): Kleisli<F, R, B> =
-      KME().tailRecM(a, f)
+    FF().run {
+      this@flatMap.flatMap(f)
+    }
 
   override fun <A, B> Kind<KleisliPartialOf<F, R>, A>.bracketCase(
-      release: (A, ExitCase<E>) -> Kind<KleisliPartialOf<F, R>, Unit>,
-      use: (A) -> Kind<KleisliPartialOf<F, R>, B>): Kleisli<F, R, B> = BFE().run {
+    release: (A, ExitCase<E>) -> Kind<KleisliPartialOf<F, R>, Unit>,
+    use: (A) -> Kind<KleisliPartialOf<F, R>, B>): Kleisli<F, R, B> = FF().run {
     Kleisli { r ->
       this@bracketCase.fix().run(r).bracketCase({ a, br ->
         release(a, br).fix().run(r)
@@ -115,7 +124,7 @@ interface KleisliBracketInstance<F, R, E> : Bracket<KleisliPartialOf<F, R>, E> {
   }
 
   override fun <A> Kind<KleisliPartialOf<F, R>, A>.uncancelable(): Kleisli<F, R, A> =
-      Kleisli { r -> BFE().run { this@uncancelable.fix().run(r).uncancelable() } }
+    Kleisli { r -> FF().run { this@uncancelable.fix().run(r).uncancelable() } }
 }
 
 /**

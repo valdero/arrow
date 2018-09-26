@@ -2,9 +2,22 @@ package arrow.effects
 
 import arrow.Kind
 import arrow.core.Either
-import arrow.effects.typeclasses.*
+import arrow.effects.typeclasses.Async
+import arrow.effects.typeclasses.Bracket
+import arrow.effects.typeclasses.ConcurrentEffect
+import arrow.effects.typeclasses.Disposable
+import arrow.effects.typeclasses.Effect
+import arrow.effects.typeclasses.ExitCase
+import arrow.effects.typeclasses.MonadDefer
+import arrow.effects.typeclasses.Proc
 import arrow.instance
-import arrow.typeclasses.*
+import arrow.typeclasses.Applicative
+import arrow.typeclasses.ApplicativeError
+import arrow.typeclasses.Functor
+import arrow.typeclasses.Monad
+import arrow.typeclasses.MonadError
+import arrow.typeclasses.Monoid
+import arrow.typeclasses.Semigroup
 import kotlin.coroutines.experimental.CoroutineContext
 import arrow.effects.ap as ioAp
 import arrow.effects.handleErrorWith as ioHandleErrorWith
@@ -67,7 +80,22 @@ interface IOMonadErrorInstance : IOMonadInstance, MonadError<ForIO, Throwable> {
 }
 
 @instance(IO::class)
-interface IOMonadDeferInstance : IOMonadErrorInstance, MonadDefer<ForIO> {
+interface IOBracketInstance : IOMonadErrorInstance, Bracket<ForIO, Throwable> {
+  override fun <A, B> Kind<ForIO, A>.bracketCase(release: (A, ExitCase<Throwable>) -> Kind<ForIO, Unit>, use: (A) -> Kind<ForIO, B>): IO<B> =
+    this@bracketCase.fix().bracketCase({ a, e -> release(a, e).fix() }, { a -> use(a).fix() })
+
+  override fun <A, B> Kind<ForIO, A>.bracket(release: (A) -> Kind<ForIO, Unit>, use: (A) -> Kind<ForIO, B>): Kind<ForIO, B> =
+    this@bracket.fix().bracket({ a -> release(a).fix() }, { a -> use(a).fix() })
+
+  override fun <A> Kind<ForIO, A>.guarantee(finalizer: Kind<ForIO, Unit>): Kind<ForIO, A> =
+    this@guarantee.fix().guarantee(finalizer.fix())
+
+  override fun <A> Kind<ForIO, A>.guaranteeCase(finalizer: (ExitCase<Throwable>) -> Kind<ForIO, Unit>): Kind<ForIO, A> =
+    this@guaranteeCase.fix().guaranteeCase { e -> finalizer(e).fix() }
+}
+
+@instance(IO::class)
+interface IOMonadDeferInstance : IOBracketInstance, MonadDefer<ForIO> {
   override fun <A> defer(fa: () -> IOOf<A>): IO<A> =
     IO.defer(fa)
 

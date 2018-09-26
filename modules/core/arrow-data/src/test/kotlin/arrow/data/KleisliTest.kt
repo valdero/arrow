@@ -1,9 +1,16 @@
 package arrow.data
 
 import arrow.Kind
-import arrow.core.*
+import arrow.core.ForId
+import arrow.core.ForTry
+import arrow.core.Id
+import arrow.core.Try
+import arrow.core.fix
+import arrow.core.monad
+import arrow.core.monadError
 import arrow.instances.ForKleisli
 import arrow.test.UnitSpec
+import arrow.test.laws.BracketLaws
 import arrow.test.laws.ContravariantLaws
 import arrow.test.laws.MonadErrorLaws
 import arrow.typeclasses.Conested
@@ -29,7 +36,12 @@ class KleisliTest : UnitSpec() {
     ForKleisli<ForTry, Int, Throwable>(Try.monadError()) extensions {
       testLaws(
         ContravariantLaws.laws(Kleisli.contravariant(), { Kleisli { x: Int -> Try.just(x) }.conest() }, ConestEQ()),
-        MonadErrorLaws.laws(this, EQ(), EQ())
+        MonadErrorLaws.laws(this, EQ(), EQ()),
+        BracketLaws.laws(Kleisli.bracket(),
+          { n -> ListK(listOf(n)) },
+          EQ(),
+          EQ(),
+          EQ())
       )
     }
 
