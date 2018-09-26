@@ -1,12 +1,24 @@
 package arrow.effects
 
 import arrow.Kind
-import arrow.core.*
+import arrow.core.Either
+import arrow.core.Left
+import arrow.core.Right
+import arrow.core.Try
+import arrow.core.andThen
+import arrow.core.identity
 import arrow.effects.typeclasses.Disposable
+import arrow.effects.typeclasses.ExitCase
 import arrow.effects.typeclasses.Proc
 import arrow.higherkind
 import arrow.typeclasses.Traverse
-import kotlinx.coroutines.experimental.*
+import kotlinx.coroutines.experimental.CompletableDeferred
+import kotlinx.coroutines.experimental.CoroutineStart
+import kotlinx.coroutines.experimental.DefaultDispatcher
+import kotlinx.coroutines.experimental.Deferred
+import kotlinx.coroutines.experimental.Unconfined
+import kotlinx.coroutines.experimental.async
+import kotlinx.coroutines.experimental.runBlocking
 import kotlin.coroutines.experimental.CoroutineContext
 
 fun <A> Deferred<A>.k(): DeferredK<A> =
@@ -27,6 +39,16 @@ data class DeferredK<out A>(val deferred: Deferred<A>) : DeferredKOf<A>, Deferre
     kotlinx.coroutines.experimental.async(Unconfined, CoroutineStart.LAZY) {
       f(await()).await()
     }.k()
+
+  fun <B> bracketCase(use: (A) -> DeferredK<B>, release: (A, ExitCase<Throwable>) -> DeferredK<Unit>): DeferredK<B> =
+    flatMap { a ->
+      try {
+        use(a).also { release(a, ExitCase.Completed) }
+      } catch (e: Exception) {
+        release(a, ExitCase.Error(e))
+        DeferredK.failed<B>(e)
+      }
+    }
 
   fun continueOn(ctx: CoroutineContext): DeferredK<A> =
     kotlinx.coroutines.experimental.async(ctx, CoroutineStart.LAZY) {
