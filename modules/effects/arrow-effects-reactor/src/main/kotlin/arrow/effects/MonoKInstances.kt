@@ -2,9 +2,20 @@ package arrow.effects
 
 import arrow.Kind
 import arrow.core.Either
-import arrow.effects.typeclasses.*
+import arrow.effects.typeclasses.Async
+import arrow.effects.typeclasses.Bracket
+import arrow.effects.typeclasses.ConcurrentEffect
+import arrow.effects.typeclasses.Disposable
+import arrow.effects.typeclasses.Effect
+import arrow.effects.typeclasses.ExitCase
+import arrow.effects.typeclasses.MonadDefer
+import arrow.effects.typeclasses.Proc
 import arrow.instance
-import arrow.typeclasses.*
+import arrow.typeclasses.Applicative
+import arrow.typeclasses.ApplicativeError
+import arrow.typeclasses.Functor
+import arrow.typeclasses.Monad
+import arrow.typeclasses.MonadError
 import kotlin.coroutines.experimental.CoroutineContext
 
 @instance(MonoK::class)
@@ -66,8 +77,14 @@ interface MonoKMonadErrorInstance :
 }
 
 @instance(MonoK::class)
+interface MonoKBracketInstance : MonoKMonadErrorInstance, Bracket<ForMonoK, Throwable> {
+  override fun <A, B> Kind<ForMonoK, A>.bracketCase(use: (A) -> Kind<ForMonoK, B>, release: (A, ExitCase<Throwable>) -> Kind<ForMonoK, Unit>): MonoK<B> =
+    fix().bracketCase({ use(it) }, { a, e -> release(a, e) })
+}
+
+@instance(MonoK::class)
 interface MonoKMonadDeferInstance :
-  MonoKMonadErrorInstance,
+  MonoKBracketInstance,
   MonadDefer<ForMonoK> {
   override fun <A> defer(fa: () -> MonoKOf<A>): MonoK<A> =
     MonoK.defer(fa)
