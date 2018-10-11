@@ -18,7 +18,7 @@ fun <A, B, C> IO.Companion.parallelMapN(ctx: CoroutineContext, ioA: IO<A>, ioB: 
     cbf.unsafeGet().forEach { it(result) }
   }
 
-  return IO.async { cb: (Either<Throwable, C>) -> Unit ->
+  return IO.async { _, cb: (Either<Throwable, C>) -> Unit ->
     cbf.set(cb)
     IO.async(IO.concurrentEffect().parMapCancellable2(ctx, ioA, ioB, f)
     { it.fix().unsafeRunAsync { it.fold({ cb(it.left()) }, { cancel.set(it) }) } }
@@ -41,7 +41,7 @@ fun <A, B, C, D> IO.Companion.parallelMapN(ctx: CoroutineContext, ioA: IO<A>, io
     cbf.unsafeGet().forEach { it(result) }
   }
 
-  return IO.async { cb: (Either<Throwable, D>) -> Unit ->
+  return IO.async { _, cb: (Either<Throwable, D>) -> Unit ->
     cbf.set(cb)
     IO.async(IO.concurrentEffect().parMapCancellable3(ctx, ioA, ioB, ioC, f)
     { it.fix().unsafeRunAsync { it.fold({ cb(it.left()) }, { cancel.set(it) }) } }
@@ -103,7 +103,7 @@ fun <A, B> IO.Companion.raceN(ctx: CoroutineContext, a: IO<A>, b: IO<B>): IO<Eit
     cbf.unsafeGet().forEach { it(result) }
   }
 
-  return IO.async { cb: (Either<Throwable, Either<A, B>>) -> Unit ->
+  return IO.async { _, cb: (Either<Throwable, Either<A, B>>) -> Unit ->
     cbf.set(cb)
     IO.async(IO.concurrentEffect().parMapCancellable2(ctx,
       a.flatMap { IO { complete(it.left().right()) } },
@@ -129,7 +129,7 @@ fun <A, B, C> IO.Companion.raceN(ctx: CoroutineContext, a: IO<A>, b: IO<B>, c: I
     cbf.unsafeGet().forEach { it(result) }
   }
 
-  return IO.async { cb: (Either<Throwable, Either<A, Either<B, C>>>) -> Unit ->
+  return IO.async { _, cb: (Either<Throwable, Either<A, Either<B, C>>>) -> Unit ->
     cbf.set(cb)
     IO.async(IO.concurrentEffect().parMapCancellable3(ctx,
       a.flatMap { IO { complete(it.left().right()) } },
