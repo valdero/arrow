@@ -30,7 +30,7 @@ class DeferredKTest : UnitSpec() {
   }
 
   init {
-    testLaws(AsyncLaws.laws(DeferredK.async(), EQ(), EQ()))
+    testLaws(AsyncLaws.laws(DeferredK.async(), { DeferredK.just(it) }, EQ(), EQ()))
 
     "DeferredK is awaitable" {
       forAll(genIntSmall(), genIntSmall(), genIntSmall()) { x: Int, y: Int, z: Int ->
